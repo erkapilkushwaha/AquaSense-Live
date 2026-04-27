@@ -5,7 +5,6 @@ import {
   Inter_700Bold,
   useFonts,
 } from "@expo-google-fonts/inter";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import React, { useEffect } from "react";
@@ -17,8 +16,6 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { SensorDataProvider } from "@/context/SensorDataContext";
 
 SplashScreen.preventAutoHideAsync();
-
-const queryClient = new QueryClient();
 
 function RootLayoutNav() {
   return (
@@ -47,15 +44,13 @@ export default function RootLayout() {
   return (
     <SafeAreaProvider>
       <ErrorBoundary>
-        <QueryClientProvider client={queryClient}>
-          <SensorDataProvider>
-            <GestureHandlerRootView>
-              <KeyboardProvider>
-                <RootLayoutNav />
-              </KeyboardProvider>
-            </GestureHandlerRootView>
-          </SensorDataProvider>
-        </QueryClientProvider>
+        <SensorDataProvider>
+          <GestureHandlerRootView>
+            <KeyboardProvider>
+              <RootLayoutNav />
+            </KeyboardProvider>
+          </GestureHandlerRootView>
+        </SensorDataProvider>
       </ErrorBoundary>
     </SafeAreaProvider>
   );

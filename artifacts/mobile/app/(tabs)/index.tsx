@@ -17,6 +17,7 @@ import { useColors } from "@/hooks/useColors";
 import { useSensorData } from "@/context/SensorDataContext";
 import { SensorCard } from "@/components/SensorCard";
 import { formatRelativeTime } from "@/utils/format";
+import type { USBStatus } from "@/hooks/useUSBSerial";
 
 export default function DashboardScreen() {
   const colors = useColors();
@@ -30,12 +31,18 @@ export default function DashboardScreen() {
     setRawInput,
     parseAndUpdate,
     refresh,
+    usbStatus,
+    usbError,
+    connectUSB,
+    disconnectUSB,
   } = useSensorData();
 
   const [parseError, setParseError] = useState(false);
   const [parseSuccess, setParseSuccess] = useState(false);
 
   const topPaddingWeb = Platform.OS === "web" ? 67 : 0;
+  const usbConnected = usbStatus === "connected";
+  const usbBusy = usbStatus === "scanning" || usbStatus === "connecting";
 
   const handleParse = () => {
     setParseError(false);
@@ -80,6 +87,33 @@ export default function DashboardScreen() {
 
   const goodCount = sensorCards.filter((c) => c.status === "good").length;
 
+  const usbChipColor = usbConnected
+    ? colors.good
+    : usbStatus === "error"
+    ? colors.poor
+    : usbBusy
+    ? colors.warning
+    : colors.mutedForeground;
+
+  const usbChipLabel = usbConnected
+    ? "Arduino Live"
+    : usbStatus === "scanning"
+    ? "Scanning…"
+    : usbStatus === "connecting"
+    ? "Connecting…"
+    : usbStatus === "error"
+    ? "Hardware Error"
+    : "No Hardware";
+
+  const usbChipIcon: "zap" | "zap-off" | "loader" | "alert-circle" =
+    usbConnected
+      ? "zap"
+      : usbBusy
+      ? "loader"
+      : usbStatus === "error"
+      ? "alert-circle"
+      : "zap-off";
+
   return (
     <KeyboardAvoidingView
       style={{ flex: 1 }}
@@ -95,7 +129,11 @@ export default function DashboardScreen() {
           },
         ]}
         refreshControl={
-          <RefreshControl refreshing={loading} onRefresh={refresh} tintColor={colors.primary} />
+          <RefreshControl
+            refreshing={loading}
+            onRefresh={refresh}
+            tintColor={colors.primary}
+          />
         }
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
@@ -106,17 +144,92 @@ export default function DashboardScreen() {
             <Text style={[styles.appName, { color: colors.mutedForeground }]}>
               Home Water Dashboard
             </Text>
-            <Text style={[styles.title, { color: colors.foreground }]}>AquaSense Live</Text>
+            <Text style={[styles.title, { color: colors.foreground }]}>
+              AquaSense Live
+            </Text>
           </View>
           <View style={styles.headerRight}>
-            {lastUpdated && (
+            {lastUpdated && !usbConnected && (
               <Text style={[styles.refreshed, { color: colors.mutedForeground }]}>
                 {formatRelativeTime(lastUpdated)}
               </Text>
             )}
             {loading && <ActivityIndicator size="small" color={colors.primary} />}
+
+            {/* Connect Hardware Button */}
+            <TouchableOpacity
+              style={[
+                styles.connectBtn,
+                {
+                  backgroundColor: usbConnected
+                    ? colors.good + "20"
+                    : usbStatus === "error"
+                    ? colors.poor + "20"
+                    : usbBusy
+                    ? colors.warning + "20"
+                    : colors.primary + "15",
+                  borderColor: usbConnected
+                    ? colors.good + "60"
+                    : usbStatus === "error"
+                    ? colors.poor + "60"
+                    : usbBusy
+                    ? colors.warning + "60"
+                    : colors.primary + "40",
+                },
+              ]}
+              onPress={usbConnected ? disconnectUSB : usbBusy ? undefined : connectUSB}
+              disabled={usbBusy}
+              activeOpacity={0.75}
+            >
+              {usbBusy ? (
+                <ActivityIndicator size={12} color={colors.warning} />
+              ) : (
+                <Feather
+                  name={usbConnected ? "zap" : "zap-off"}
+                  size={13}
+                  color={usbConnected ? colors.good : usbStatus === "error" ? colors.poor : colors.primary}
+                />
+              )}
+              <Text
+                style={[
+                  styles.connectBtnText,
+                  {
+                    color: usbConnected
+                      ? colors.good
+                      : usbStatus === "error"
+                      ? colors.poor
+                      : usbBusy
+                      ? colors.warning
+                      : colors.primary,
+                  },
+                ]}
+              >
+                {usbConnected
+                  ? "Disconnect"
+                  : usbStatus === "scanning"
+                  ? "Scanning…"
+                  : usbStatus === "connecting"
+                  ? "Connecting…"
+                  : "Connect Hardware"}
+              </Text>
+            </TouchableOpacity>
           </View>
         </View>
+
+        {/* ── USB Error Banner ── */}
+        {usbError !== null && (
+          <View
+            style={[
+              styles.usbErrorBanner,
+              { backgroundColor: colors.poor + "15", borderColor: colors.poor + "40" },
+            ]}
+          >
+            <Feather name="alert-circle" size={14} color={colors.poor} />
+            <Text style={[styles.usbErrorText, { color: colors.poor }]}>
+              {usbError}
+            </Text>
+          </View>
+        )}
 
         {/* ── Overall Status Banner ── */}
         <View
@@ -127,86 +240,129 @@ export default function DashboardScreen() {
         >
           <View style={[styles.statusDot, { backgroundColor: overallColor }]} />
           <View style={styles.statusText}>
-            <Text style={[styles.statusLabel, { color: overallColor }]}>{overallLabel}</Text>
+            <Text style={[styles.statusLabel, { color: overallColor }]}>
+              {overallLabel}
+            </Text>
             <Text style={[styles.statusSub, { color: colors.mutedForeground }]}>
               {sensorCards.length > 0
                 ? `${goodCount} of ${sensorCards.length} sensors in safe range`
                 : "Awaiting first reading"}
             </Text>
           </View>
-          {currentReading && (
-            <View style={styles.readingTag}>
-              <Feather name="wifi" size={11} color={colors.primary} />
-              <Text style={[styles.readingTagText, { color: colors.primary }]}>Live</Text>
-            </View>
-          )}
+
+          {/* USB chip or Live badge */}
+          <View
+            style={[
+              styles.readingTag,
+              { backgroundColor: usbChipColor + "18", borderWidth: 1, borderColor: usbChipColor + "40" },
+            ]}
+          >
+            <Feather name={usbChipIcon} size={11} color={usbChipColor} />
+            <Text style={[styles.readingTagText, { color: usbChipColor }]}>
+              {usbChipLabel}
+            </Text>
+          </View>
         </View>
 
         {/* ── Data Parser Input ── */}
         <View
           style={[
             styles.parserCard,
-            { backgroundColor: colors.card, borderColor: colors.border },
+            {
+              backgroundColor: colors.card,
+              borderColor: usbConnected ? colors.good + "60" : colors.border,
+              borderWidth: usbConnected ? 1.5 : 1,
+            },
           ]}
         >
           <View style={styles.parserHeader}>
-            <Feather name="cpu" size={14} color={colors.primary} />
+            <Feather name="cpu" size={14} color={usbConnected ? colors.good : colors.primary} />
             <Text style={[styles.parserTitle, { color: colors.foreground }]}>
-              Live Sensor Input
+              {usbConnected ? "Live Hardware Feed" : "Live Sensor Input"}
             </Text>
+            {usbConnected && (
+              <View style={[styles.livePill, { backgroundColor: colors.good + "20" }]}>
+                <View style={[styles.liveDot, { backgroundColor: colors.good }]} />
+                <Text style={[styles.livePillText, { color: colors.good }]}>LIVE</Text>
+              </View>
+            )}
           </View>
-          <Text style={[styles.parserHint, { color: colors.mutedForeground }]}>
-            Paste raw string:{" "}
-            <Text style={{ fontFamily: "Inter_600SemiBold", color: colors.accent }}>
-              TDS|pH|Turbidity|Temp|Flow
+
+          {usbConnected ? (
+            <Text style={[styles.parserHint, { color: colors.mutedForeground }]}>
+              Streaming from Arduino at{" "}
+              <Text style={{ fontFamily: "Inter_600SemiBold", color: colors.good }}>
+                9600 baud
+              </Text>
+              . Data auto-updates below.
             </Text>
-          </Text>
+          ) : (
+            <Text style={[styles.parserHint, { color: colors.mutedForeground }]}>
+              Paste raw string:{" "}
+              <Text style={{ fontFamily: "Inter_600SemiBold", color: colors.accent }}>
+                TDS|pH|Turbidity|Temp|Flow
+              </Text>
+            </Text>
+          )}
+
           <View style={styles.parserRow}>
             <TextInput
               style={[
                 styles.parserInput,
                 {
-                  backgroundColor: colors.background,
+                  backgroundColor: usbConnected ? colors.good + "0A" : colors.background,
                   borderColor: parseError
                     ? colors.poor
                     : parseSuccess
                     ? colors.good
+                    : usbConnected
+                    ? colors.good + "50"
                     : colors.border,
                   color: colors.foreground,
                 },
               ]}
-              placeholder="e.g. 220|7.2|0.4|22.5|8.1"
+              placeholder={
+                usbConnected
+                  ? "Waiting for Arduino data…"
+                  : "e.g. 220|7.2|0.4|22.5|8.1"
+              }
               placeholderTextColor={colors.mutedForeground}
               value={rawInput}
               onChangeText={(v) => {
-                setRawInput(v);
-                setParseError(false);
+                if (!usbConnected) {
+                  setRawInput(v);
+                  setParseError(false);
+                }
               }}
               autoCapitalize="none"
               autoCorrect={false}
-              onSubmitEditing={handleParse}
+              onSubmitEditing={usbConnected ? undefined : handleParse}
               returnKeyType="done"
+              editable={!usbConnected}
             />
-            <TouchableOpacity
-              style={[
-                styles.parseBtn,
-                {
-                  backgroundColor: parseError
-                    ? colors.poor
-                    : parseSuccess
-                    ? colors.good
-                    : colors.primary,
-                },
-              ]}
-              onPress={handleParse}
-            >
-              <Feather
-                name={parseSuccess ? "check" : parseError ? "x" : "play"}
-                size={16}
-                color="#fff"
-              />
-            </TouchableOpacity>
+            {!usbConnected && (
+              <TouchableOpacity
+                style={[
+                  styles.parseBtn,
+                  {
+                    backgroundColor: parseError
+                      ? colors.poor
+                      : parseSuccess
+                      ? colors.good
+                      : colors.primary,
+                  },
+                ]}
+                onPress={handleParse}
+              >
+                <Feather
+                  name={parseSuccess ? "check" : parseError ? "x" : "play"}
+                  size={16}
+                  color="#fff"
+                />
+              </TouchableOpacity>
+            )}
           </View>
+
           {parseError && (
             <Text style={[styles.parseMsg, { color: colors.poor }]}>
               Invalid format. Use: TDS|pH|Turbidity|Temp|Flow
@@ -235,7 +391,12 @@ export default function DashboardScreen() {
         </View>
 
         {sensorCards.length === 0 ? (
-          <View style={[styles.emptyCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          <View
+            style={[
+              styles.emptyCard,
+              { backgroundColor: colors.card, borderColor: colors.border },
+            ]}
+          >
             <ActivityIndicator color={colors.primary} />
             <Text style={[styles.emptyText, { color: colors.mutedForeground }]}>
               Loading sensor data...
@@ -249,11 +410,14 @@ export default function DashboardScreen() {
           </View>
         )}
 
-        {/* ── About / Credits ── */}
+        {/* ── About / Credits (always visible) ── */}
         <View
           style={[
             styles.creditsCard,
-            { backgroundColor: colors.primary + "0F", borderColor: colors.primary + "30" },
+            {
+              backgroundColor: colors.primary + "0F",
+              borderColor: colors.primary + "30",
+            },
           ]}
         >
           <View style={styles.creditsHeader}>
@@ -321,6 +485,33 @@ const styles = StyleSheet.create({
   title: { fontSize: 26, fontFamily: "Inter_700Bold" },
   headerRight: { flexDirection: "row", alignItems: "center", gap: 8 },
   refreshed: { fontSize: 11, fontFamily: "Inter_400Regular" },
+  connectBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    paddingHorizontal: 11,
+    paddingVertical: 7,
+    borderRadius: 20,
+    borderWidth: 1,
+  },
+  connectBtnText: {
+    fontSize: 12,
+    fontFamily: "Inter_600SemiBold",
+  },
+  usbErrorBanner: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 8,
+    borderRadius: 12,
+    borderWidth: 1,
+    padding: 12,
+  },
+  usbErrorText: {
+    flex: 1,
+    fontSize: 12,
+    fontFamily: "Inter_500Medium",
+    lineHeight: 17,
+  },
   statusBanner: {
     flexDirection: "row",
     alignItems: "center",
@@ -338,18 +529,27 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 4,
     paddingHorizontal: 8,
-    paddingVertical: 3,
+    paddingVertical: 4,
     borderRadius: 10,
   },
   readingTagText: { fontSize: 11, fontFamily: "Inter_600SemiBold" },
   parserCard: {
     borderRadius: 14,
-    borderWidth: 1,
     padding: 14,
     gap: 10,
   },
   parserHeader: { flexDirection: "row", alignItems: "center", gap: 7 },
-  parserTitle: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
+  parserTitle: { fontSize: 14, fontFamily: "Inter_600SemiBold", flex: 1 },
+  livePill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+    borderRadius: 8,
+  },
+  liveDot: { width: 5, height: 5, borderRadius: 2.5 },
+  livePillText: { fontSize: 9, fontFamily: "Inter_700Bold", letterSpacing: 0.8 },
   parserHint: { fontSize: 11, fontFamily: "Inter_400Regular" },
   parserRow: { flexDirection: "row", gap: 8 },
   parserInput: {
@@ -369,10 +569,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   parseMsg: { fontSize: 11, fontFamily: "Inter_500Medium" },
-  rawTag: {
-    borderRadius: 8,
-    padding: 8,
-  },
+  rawTag: { borderRadius: 8, padding: 8 },
   rawTagText: { fontSize: 10, fontFamily: "Inter_400Regular", letterSpacing: 0.3 },
   sectionHeader: { flexDirection: "row", alignItems: "center", gap: 7 },
   sectionTitle: { fontSize: 16, fontFamily: "Inter_600SemiBold" },
@@ -401,10 +598,20 @@ const styles = StyleSheet.create({
   },
   creditsTitle: { fontSize: 15, fontFamily: "Inter_600SemiBold" },
   divider: { height: 1 },
-  creditsHeading: { fontSize: 11, fontFamily: "Inter_500Medium", textTransform: "uppercase", letterSpacing: 0.8 },
+  creditsHeading: {
+    fontSize: 11,
+    fontFamily: "Inter_500Medium",
+    textTransform: "uppercase",
+    letterSpacing: 0.8,
+  },
   creditsGrid: { gap: 10 },
   creditsRow: { flexDirection: "row", alignItems: "flex-start", gap: 10 },
   creditsRowText: { flex: 1, gap: 1 },
-  creditsLabel: { fontSize: 10, fontFamily: "Inter_400Regular", textTransform: "uppercase", letterSpacing: 0.5 },
+  creditsLabel: {
+    fontSize: 10,
+    fontFamily: "Inter_400Regular",
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+  },
   creditsValue: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
 });

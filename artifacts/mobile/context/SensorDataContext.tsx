@@ -13,6 +13,7 @@ import {
   generateMockRawString,
   parseRawSensorString,
 } from "../utils/dataParser";
+import { useUSBSerial, type USBStatus } from "../hooks/useUSBSerial";
 
 interface SensorDataContextType {
   sensorCards: SensorCard[];
@@ -27,6 +28,10 @@ interface SensorDataContextType {
   resolveAlert: (alertId: string) => void;
   refresh: () => void;
   unreadAlertCount: number;
+  usbStatus: USBStatus;
+  usbError: string | null;
+  connectUSB: () => void;
+  disconnectUSB: () => void;
 }
 
 const SensorDataContext = createContext<SensorDataContextType | null>(null);
@@ -34,7 +39,6 @@ const SensorDataContext = createContext<SensorDataContextType | null>(null);
 function generateHomeAlerts(cards: SensorCard[]): Alert[] {
   const now = new Date();
   const alerts: Alert[] = [];
-
   cards.forEach((card) => {
     if (card.status === "poor") {
       alerts.push({
@@ -76,7 +80,6 @@ function generateHomeAlerts(cards: SensorCard[]): Alert[] {
       });
     }
   });
-
   return alerts.slice(0, 4);
 }
 
@@ -90,17 +93,14 @@ export function SensorDataProvider({ children }: { children: React.ReactNode }) 
   const [rawInput, setRawInput] = useState("");
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const historyRef = useRef<ReadingHistory[]>([]);
+  const usbConnectedRef = useRef(false);
 
   const applyReading = useCallback((reading: SensorReading) => {
     const cards = buildSensorCards(reading);
     setSensorCards(cards);
     setCurrentReading(reading);
     setLastUpdated(reading.timestamp);
-
-    const newEntry: ReadingHistory = {
-      id: `${reading.timestamp.getTime()}`,
-      reading,
-    };
+    const newEntry: ReadingHistory = { id: `${reading.timestamp.getTime()}`, reading };
     const updated = [newEntry, ...historyRef.current].slice(0, 50);
     historyRef.current = updated;
     setHistory(updated);
@@ -132,19 +132,66 @@ export function SensorDataProvider({ children }: { children: React.ReactNode }) 
     []
   );
 
-  const unreadAlertCount = alerts.filter((a) => !a.resolved).length;
+  const startMockInterval = useCallback(() => {
+    if (intervalRef.current) return;
+    intervalRef.current = setInterval(() => {
+      if (!usbConnectedRef.current) {
+        const raw = generateMockRawString();
+        const parsed = parseRawSensorString(raw);
+        if (parsed) applyReading(parsed);
+      }
+    }, 10000);
+  }, [applyReading]);
+
+  const stopMockInterval = useCallback(() => {
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    }
+  }, []);
+
+  const handleUSBData = useCallback(
+    (raw: string) => {
+      setRawInput(raw);
+      parseAndUpdate(raw);
+    },
+    [parseAndUpdate]
+  );
+
+  const handleUSBDisconnect = useCallback(() => {
+    usbConnectedRef.current = false;
+    startMockInterval();
+  }, [startMockInterval]);
+
+  const { status: usbStatus, errorMessage: usbError, connect, disconnect } =
+    useUSBSerial({ onData: handleUSBData, onDisconnect: handleUSBDisconnect });
+
+  const connectUSB = useCallback(async () => {
+    stopMockInterval();
+    usbConnectedRef.current = false;
+    await connect();
+  }, [connect, stopMockInterval]);
+
+  const disconnectUSB = useCallback(() => {
+    disconnect();
+    usbConnectedRef.current = false;
+    startMockInterval();
+  }, [disconnect, startMockInterval]);
+
+  useEffect(() => {
+    if (usbStatus === "connected") {
+      usbConnectedRef.current = true;
+      stopMockInterval();
+    }
+  }, [usbStatus, stopMockInterval]);
 
   useEffect(() => {
     refresh();
-    intervalRef.current = setInterval(() => {
-      const raw = generateMockRawString();
-      const parsed = parseRawSensorString(raw);
-      if (parsed) applyReading(parsed);
-    }, 10000);
-    return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current);
-    };
+    startMockInterval();
+    return () => stopMockInterval();
   }, []);
+
+  const unreadAlertCount = alerts.filter((a) => !a.resolved).length;
 
   return (
     <SensorDataContext.Provider
@@ -161,6 +208,10 @@ export function SensorDataProvider({ children }: { children: React.ReactNode }) 
         resolveAlert,
         refresh,
         unreadAlertCount,
+        usbStatus,
+        usbError,
+        connectUSB,
+        disconnectUSB,
       }}
     >
       {children}

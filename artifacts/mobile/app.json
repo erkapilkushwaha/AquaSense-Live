@@ -7,7 +7,7 @@
     "icon": "./assets/images/icon.png",
     "scheme": "mobile",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": true,
+    "newArchEnabled": false,
     "splash": {
       "image": "./assets/images/icon.png",
       "resizeMode": "contain",
@@ -16,7 +16,13 @@
     "ios": {
       "supportsTablet": false
     },
-    "android": {},
+    "android": {
+      "package": "com.aquasense.live",
+      "minSdkVersion": 21,
+      "targetSdkVersion": 34,
+      "versionCode": 1,
+      "permissions": []
+    },
     "web": {
       "favicon": "./assets/images/icon.png"
     },
@@ -28,7 +34,8 @@
         }
       ],
       "expo-font",
-      "expo-web-browser"
+      "expo-web-browser",
+      "./app.plugin"
     ],
     "experiments": {
       "typedRoutes": true,

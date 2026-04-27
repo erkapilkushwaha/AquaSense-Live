@@ -1,11 +1,11 @@
 {
   "expo": {
     "name": "AquaSense Live",
-    "slug": "mobile",
+    "slug": "aquasense-live",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "mobile",
+    "scheme": "aquasense",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": false,
     "splash": {
@@ -17,10 +17,14 @@
       "supportsTablet": false
     },
     "android": {
-      "package": "com.aquasense.live",
+      "package": "com.kapil.aquasense",
       "minSdkVersion": 21,
       "targetSdkVersion": 34,
       "versionCode": 1,
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/images/icon.png",
+        "backgroundColor": "#0284c7"
+      },
       "permissions": []
     },
     "web": {

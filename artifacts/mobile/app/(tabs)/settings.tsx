@@ -12,31 +12,25 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
-import { useWaterData } from "@/context/WaterDataContext";
+import { useSensorData } from "@/context/SensorDataContext";
 
 export default function SettingsScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { refresh } = useWaterData();
+  const { refresh } = useSensorData();
   const [autoRefresh, setAutoRefresh] = useState(true);
-  const [alertNotifications, setAlertNotifications] = useState(true);
+  const [notifications, setNotifications] = useState(true);
   const [highAlerts, setHighAlerts] = useState(true);
   const [mediumAlerts, setMediumAlerts] = useState(true);
-  const [unit, setUnit] = useState<"metric" | "imperial">("metric");
-
   const topPaddingWeb = Platform.OS === "web" ? 67 : 0;
 
-  const handleClearData = () => {
+  const handleReset = () => {
     Alert.alert(
-      "Reset Data",
-      "This will refresh all station data and clear alert history. Continue?",
+      "Reset Readings",
+      "This will clear all saved data and generate a fresh reading. Continue?",
       [
         { text: "Cancel", style: "cancel" },
-        {
-          text: "Reset",
-          style: "destructive",
-          onPress: () => refresh(),
-        },
+        { text: "Reset", style: "destructive", onPress: () => refresh() },
       ]
     );
   };
@@ -47,21 +41,18 @@ export default function SettingsScreen() {
       contentContainerStyle={[
         styles.content,
         {
-          paddingBottom:
-            insets.bottom + (Platform.OS === "web" ? 34 : 0) + 16,
+          paddingBottom: insets.bottom + (Platform.OS === "web" ? 34 : 0) + 16,
           paddingTop: topPaddingWeb,
         },
       ]}
       showsVerticalScrollIndicator={false}
     >
-      <Text style={[styles.title, { color: colors.foreground }]}>
-        Settings
-      </Text>
+      <Text style={[styles.title, { color: colors.foreground }]}>Settings</Text>
 
-      <Section title="Data & Refresh" colors={colors}>
+      <Section title="Sensor Updates" colors={colors}>
         <SettingRow
           label="Auto Refresh"
-          description="Update data every 30 seconds"
+          description="Update readings every 10 seconds"
           colors={colors}
         >
           <Switch
@@ -71,119 +62,79 @@ export default function SettingsScreen() {
             thumbColor={colors.card}
           />
         </SettingRow>
-        <Divider colors={colors} />
-        <SettingRow label="Units" description="Measurement units" colors={colors}>
-          <View style={styles.unitToggle}>
-            <TouchableOpacity
-              style={[
-                styles.unitBtn,
-                {
-                  backgroundColor: unit === "metric" ? colors.primary : colors.muted,
-                },
-              ]}
-              onPress={() => setUnit("metric")}
-            >
-              <Text
-                style={[
-                  styles.unitText,
-                  {
-                    color:
-                      unit === "metric"
-                        ? colors.primaryForeground
-                        : colors.foreground,
-                  },
-                ]}
-              >
-                Metric
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[
-                styles.unitBtn,
-                {
-                  backgroundColor:
-                    unit === "imperial" ? colors.primary : colors.muted,
-                },
-              ]}
-              onPress={() => setUnit("imperial")}
-            >
-              <Text
-                style={[
-                  styles.unitText,
-                  {
-                    color:
-                      unit === "imperial"
-                        ? colors.primaryForeground
-                        : colors.foreground,
-                  },
-                ]}
-              >
-                Imperial
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </SettingRow>
       </Section>
 
       <Section title="Notifications" colors={colors}>
         <SettingRow
-          label="Alert Notifications"
-          description="Receive push notifications for alerts"
+          label="Water Alerts"
+          description="Receive alerts when sensors go out of range"
           colors={colors}
         >
           <Switch
-            value={alertNotifications}
-            onValueChange={setAlertNotifications}
+            value={notifications}
+            onValueChange={setNotifications}
             trackColor={{ true: colors.primary }}
             thumbColor={colors.card}
           />
         </SettingRow>
         <Divider colors={colors} />
-        <SettingRow
-          label="High Priority Alerts"
-          description="Critical water quality events"
-          colors={colors}
-        >
+        <SettingRow label="High Priority" description="Urgent water quality issues" colors={colors}>
           <Switch
             value={highAlerts}
             onValueChange={setHighAlerts}
             trackColor={{ true: colors.poor }}
             thumbColor={colors.card}
-            disabled={!alertNotifications}
+            disabled={!notifications}
           />
         </SettingRow>
         <Divider colors={colors} />
-        <SettingRow
-          label="Medium Priority Alerts"
-          description="Warning level events"
-          colors={colors}
-        >
+        <SettingRow label="Caution Alerts" description="Moderate range warnings" colors={colors}>
           <Switch
             value={mediumAlerts}
             onValueChange={setMediumAlerts}
             trackColor={{ true: colors.warning }}
             thumbColor={colors.card}
-            disabled={!alertNotifications}
+            disabled={!notifications}
           />
         </SettingRow>
       </Section>
 
+      <Section title="Sensor Thresholds" colors={colors}>
+        <InfoRow label="pH Safe Range" value="6.5 – 8.5" colors={colors} />
+        <Divider colors={colors} />
+        <InfoRow label="TDS Safe Range" value="50 – 300 PPM" colors={colors} />
+        <Divider colors={colors} />
+        <InfoRow label="Turbidity Limit" value="≤ 1.0 NTU" colors={colors} />
+        <Divider colors={colors} />
+        <InfoRow label="Temperature Range" value="10 – 25 °C" colors={colors} />
+        <Divider colors={colors} />
+        <InfoRow label="Flow Rate Range" value="6 – 12 L/min" colors={colors} />
+      </Section>
+
+      <Section title="Data Format" colors={colors}>
+        <InfoRow label="Input Format" value="TDS|pH|Turbidity|Temp|Flow" colors={colors} />
+        <Divider colors={colors} />
+        <InfoRow label="Delimiter" value="Pipe character  |" colors={colors} />
+        <Divider colors={colors} />
+        <InfoRow label="Example" value="220|7.2|0.4|22.5|8.1" colors={colors} />
+      </Section>
+
       <Section title="About" colors={colors}>
+        <InfoRow label="App" value="AquaSense Live" colors={colors} />
+        <Divider colors={colors} />
         <InfoRow label="Version" value="1.0.0" colors={colors} />
         <Divider colors={colors} />
-        <InfoRow label="Stations" value="6 active" colors={colors} />
+        <InfoRow label="Developer" value="Aneesh Kumar" colors={colors} />
         <Divider colors={colors} />
-        <InfoRow label="Protocol" value="WQ-Monitor v2" colors={colors} />
+        <InfoRow label="Institution" value="Sunrise Institute of Engg. Technology & Mgmt." colors={colors} />
       </Section>
 
       <TouchableOpacity
         style={[styles.dangerBtn, { borderColor: colors.poor }]}
-        onPress={handleClearData}
+        onPress={handleReset}
       >
         <Feather name="refresh-cw" size={15} color={colors.poor} />
-        <Text style={[styles.dangerText, { color: colors.poor }]}>
-          Reset Data
-        </Text>
+        <Text style={[styles.dangerText, { color: colors.poor }]}>Reset Sensor Data</Text>
       </TouchableOpacity>
     </ScrollView>
   );
@@ -200,15 +151,8 @@ function Section({
 }) {
   return (
     <View style={styles.section}>
-      <Text style={[styles.sectionTitle, { color: colors.mutedForeground }]}>
-        {title}
-      </Text>
-      <View
-        style={[
-          styles.sectionCard,
-          { backgroundColor: colors.card, borderColor: colors.border },
-        ]}
-      >
+      <Text style={[styles.sectionTitle, { color: colors.mutedForeground }]}>{title}</Text>
+      <View style={[styles.sectionCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
         {children}
       </View>
     </View>
@@ -229,13 +173,9 @@ function SettingRow({
   return (
     <View style={styles.settingRow}>
       <View style={styles.settingLeft}>
-        <Text style={[styles.settingLabel, { color: colors.foreground }]}>
-          {label}
-        </Text>
+        <Text style={[styles.settingLabel, { color: colors.foreground }]}>{label}</Text>
         {description && (
-          <Text style={[styles.settingDesc, { color: colors.mutedForeground }]}>
-            {description}
-          </Text>
+          <Text style={[styles.settingDesc, { color: colors.mutedForeground }]}>{description}</Text>
         )}
       </View>
       {children}
@@ -254,10 +194,8 @@ function InfoRow({
 }) {
   return (
     <View style={styles.settingRow}>
-      <Text style={[styles.settingLabel, { color: colors.foreground }]}>
-        {label}
-      </Text>
-      <Text style={[styles.infoValue, { color: colors.mutedForeground }]}>
+      <Text style={[styles.settingLabel, { color: colors.foreground }]}>{label}</Text>
+      <Text style={[styles.infoValue, { color: colors.mutedForeground }]} numberOfLines={1}>
         {value}
       </Text>
     </View>
@@ -270,18 +208,9 @@ function Divider({ colors }: { colors: ReturnType<typeof import("@/hooks/useColo
 
 const styles = StyleSheet.create({
   scroll: { flex: 1 },
-  content: {
-    paddingHorizontal: 16,
-    gap: 16,
-  },
-  title: {
-    fontSize: 26,
-    fontFamily: "Inter_700Bold",
-    paddingTop: 12,
-  },
-  section: {
-    gap: 6,
-  },
+  content: { paddingHorizontal: 16, gap: 16 },
+  title: { fontSize: 26, fontFamily: "Inter_700Bold", paddingTop: 12 },
+  section: { gap: 6 },
   sectionTitle: {
     fontSize: 12,
     fontFamily: "Inter_600SemiBold",
@@ -289,11 +218,7 @@ const styles = StyleSheet.create({
     letterSpacing: 0.8,
     paddingHorizontal: 4,
   },
-  sectionCard: {
-    borderRadius: 14,
-    borderWidth: 1,
-    overflow: "hidden",
-  },
+  sectionCard: { borderRadius: 14, borderWidth: 1, overflow: "hidden" },
   settingRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -302,39 +227,11 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     gap: 12,
   },
-  settingLeft: {
-    flex: 1,
-    gap: 2,
-  },
-  settingLabel: {
-    fontSize: 14,
-    fontFamily: "Inter_500Medium",
-  },
-  settingDesc: {
-    fontSize: 11,
-    fontFamily: "Inter_400Regular",
-  },
-  infoValue: {
-    fontSize: 13,
-    fontFamily: "Inter_400Regular",
-  },
-  divider: {
-    height: 1,
-    marginHorizontal: 14,
-  },
-  unitToggle: {
-    flexDirection: "row",
-    borderRadius: 8,
-    overflow: "hidden",
-  },
-  unitBtn: {
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-  },
-  unitText: {
-    fontSize: 12,
-    fontFamily: "Inter_500Medium",
-  },
+  settingLeft: { flex: 1, gap: 2 },
+  settingLabel: { fontSize: 14, fontFamily: "Inter_500Medium" },
+  settingDesc: { fontSize: 11, fontFamily: "Inter_400Regular" },
+  infoValue: { fontSize: 12, fontFamily: "Inter_400Regular", flexShrink: 1, textAlign: "right" },
+  divider: { height: 1, marginHorizontal: 14 },
   dangerBtn: {
     flexDirection: "row",
     alignItems: "center",
@@ -344,8 +241,5 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     padding: 14,
   },
-  dangerText: {
-    fontSize: 14,
-    fontFamily: "Inter_500Medium",
-  },
+  dangerText: { fontSize: 14, fontFamily: "Inter_500Medium" },
 });

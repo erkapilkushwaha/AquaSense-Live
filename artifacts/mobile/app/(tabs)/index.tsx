@@ -1,193 +1,410 @@
 import { Feather } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
-import React from "react";
+import React, { useState } from "react";
 import {
   ActivityIndicator,
+  KeyboardAvoidingView,
   Platform,
   RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
+  TouchableOpacity,
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
-import { useWaterData } from "@/context/WaterDataContext";
-import { SummaryBar } from "@/components/SummaryBar";
-import { StationCard } from "@/components/StationCard";
-import { AlertItem } from "@/components/AlertItem";
+import { useSensorData } from "@/context/SensorDataContext";
+import { SensorCard } from "@/components/SensorCard";
 import { formatRelativeTime } from "@/utils/format";
 
 export default function DashboardScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const router = useRouter();
-  const { stations, alerts, loading, lastRefreshed, refresh, resolveAlert } =
-    useWaterData();
+  const {
+    sensorCards,
+    currentReading,
+    loading,
+    lastUpdated,
+    rawInput,
+    setRawInput,
+    parseAndUpdate,
+    refresh,
+  } = useSensorData();
 
-  const activeAlerts = alerts.filter((a) => !a.resolved).slice(0, 3);
-  const topStations = [...stations]
-    .sort((a, b) => a.overallScore - b.overallScore)
-    .slice(0, 4);
+  const [parseError, setParseError] = useState(false);
+  const [parseSuccess, setParseSuccess] = useState(false);
 
   const topPaddingWeb = Platform.OS === "web" ? 67 : 0;
 
+  const handleParse = () => {
+    setParseError(false);
+    setParseSuccess(false);
+    const ok = parseAndUpdate(rawInput);
+    if (ok) {
+      setParseSuccess(true);
+      setRawInput("");
+      setTimeout(() => setParseSuccess(false), 2500);
+    } else {
+      setParseError(true);
+      setTimeout(() => setParseError(false), 2500);
+    }
+  };
+
+  const overallStatus =
+    sensorCards.length === 0
+      ? "unknown"
+      : sensorCards.some((c) => c.status === "poor")
+      ? "poor"
+      : sensorCards.some((c) => c.status === "moderate")
+      ? "moderate"
+      : "good";
+
+  const overallColor =
+    overallStatus === "good"
+      ? colors.good
+      : overallStatus === "moderate"
+      ? colors.warning
+      : overallStatus === "poor"
+      ? colors.poor
+      : colors.mutedForeground;
+
+  const overallLabel =
+    overallStatus === "good"
+      ? "Water is Safe"
+      : overallStatus === "moderate"
+      ? "Needs Attention"
+      : overallStatus === "poor"
+      ? "Action Required"
+      : "Awaiting Data";
+
+  const goodCount = sensorCards.filter((c) => c.status === "good").length;
+
   return (
-    <ScrollView
-      style={[styles.scroll, { backgroundColor: colors.background }]}
-      contentContainerStyle={[
-        styles.content,
-        {
-          paddingBottom:
-            insets.bottom + (Platform.OS === "web" ? 34 : 0) + 16,
-          paddingTop: topPaddingWeb,
-        },
-      ]}
-      refreshControl={
-        <RefreshControl
-          refreshing={loading}
-          onRefresh={refresh}
-          tintColor={colors.primary}
-        />
-      }
-      showsVerticalScrollIndicator={false}
+    <KeyboardAvoidingView
+      style={{ flex: 1 }}
+      behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
-      {/* Header */}
-      <View style={styles.header}>
-        <View>
-          <Text style={[styles.greeting, { color: colors.mutedForeground }]}>
-            Water Quality
-          </Text>
-          <Text style={[styles.title, { color: colors.foreground }]}>
-            Dashboard
-          </Text>
+      <ScrollView
+        style={[styles.scroll, { backgroundColor: colors.background }]}
+        contentContainerStyle={[
+          styles.content,
+          {
+            paddingBottom: insets.bottom + (Platform.OS === "web" ? 34 : 0) + 20,
+            paddingTop: topPaddingWeb,
+          },
+        ]}
+        refreshControl={
+          <RefreshControl refreshing={loading} onRefresh={refresh} tintColor={colors.primary} />
+        }
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+      >
+        {/* ── Header ── */}
+        <View style={styles.header}>
+          <View>
+            <Text style={[styles.appName, { color: colors.mutedForeground }]}>
+              Home Water Dashboard
+            </Text>
+            <Text style={[styles.title, { color: colors.foreground }]}>AquaSense Live</Text>
+          </View>
+          <View style={styles.headerRight}>
+            {lastUpdated && (
+              <Text style={[styles.refreshed, { color: colors.mutedForeground }]}>
+                {formatRelativeTime(lastUpdated)}
+              </Text>
+            )}
+            {loading && <ActivityIndicator size="small" color={colors.primary} />}
+          </View>
         </View>
-        <View style={styles.headerRight}>
-          {lastRefreshed && (
-            <Text style={[styles.refreshed, { color: colors.mutedForeground }]}>
-              {formatRelativeTime(lastRefreshed)}
+
+        {/* ── Overall Status Banner ── */}
+        <View
+          style={[
+            styles.statusBanner,
+            { backgroundColor: overallColor + "15", borderColor: overallColor + "50" },
+          ]}
+        >
+          <View style={[styles.statusDot, { backgroundColor: overallColor }]} />
+          <View style={styles.statusText}>
+            <Text style={[styles.statusLabel, { color: overallColor }]}>{overallLabel}</Text>
+            <Text style={[styles.statusSub, { color: colors.mutedForeground }]}>
+              {sensorCards.length > 0
+                ? `${goodCount} of ${sensorCards.length} sensors in safe range`
+                : "Awaiting first reading"}
+            </Text>
+          </View>
+          {currentReading && (
+            <View style={styles.readingTag}>
+              <Feather name="wifi" size={11} color={colors.primary} />
+              <Text style={[styles.readingTagText, { color: colors.primary }]}>Live</Text>
+            </View>
+          )}
+        </View>
+
+        {/* ── Data Parser Input ── */}
+        <View
+          style={[
+            styles.parserCard,
+            { backgroundColor: colors.card, borderColor: colors.border },
+          ]}
+        >
+          <View style={styles.parserHeader}>
+            <Feather name="cpu" size={14} color={colors.primary} />
+            <Text style={[styles.parserTitle, { color: colors.foreground }]}>
+              Live Sensor Input
+            </Text>
+          </View>
+          <Text style={[styles.parserHint, { color: colors.mutedForeground }]}>
+            Paste raw string:{" "}
+            <Text style={{ fontFamily: "Inter_600SemiBold", color: colors.accent }}>
+              TDS|pH|Turbidity|Temp|Flow
+            </Text>
+          </Text>
+          <View style={styles.parserRow}>
+            <TextInput
+              style={[
+                styles.parserInput,
+                {
+                  backgroundColor: colors.background,
+                  borderColor: parseError
+                    ? colors.poor
+                    : parseSuccess
+                    ? colors.good
+                    : colors.border,
+                  color: colors.foreground,
+                },
+              ]}
+              placeholder="e.g. 220|7.2|0.4|22.5|8.1"
+              placeholderTextColor={colors.mutedForeground}
+              value={rawInput}
+              onChangeText={(v) => {
+                setRawInput(v);
+                setParseError(false);
+              }}
+              autoCapitalize="none"
+              autoCorrect={false}
+              onSubmitEditing={handleParse}
+              returnKeyType="done"
+            />
+            <TouchableOpacity
+              style={[
+                styles.parseBtn,
+                {
+                  backgroundColor: parseError
+                    ? colors.poor
+                    : parseSuccess
+                    ? colors.good
+                    : colors.primary,
+                },
+              ]}
+              onPress={handleParse}
+            >
+              <Feather
+                name={parseSuccess ? "check" : parseError ? "x" : "play"}
+                size={16}
+                color="#fff"
+              />
+            </TouchableOpacity>
+          </View>
+          {parseError && (
+            <Text style={[styles.parseMsg, { color: colors.poor }]}>
+              Invalid format. Use: TDS|pH|Turbidity|Temp|Flow
             </Text>
           )}
-          {loading && <ActivityIndicator size="small" color={colors.primary} />}
-        </View>
-      </View>
-
-      {/* Summary */}
-      <SummaryBar stations={stations} />
-
-      {/* Active Alerts */}
-      {activeAlerts.length > 0 && (
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <View style={styles.sectionTitleRow}>
-              <Feather name="alert-triangle" size={15} color={colors.poor} />
-              <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
-                Active Alerts
+          {parseSuccess && (
+            <Text style={[styles.parseMsg, { color: colors.good }]}>
+              Sensor data updated successfully.
+            </Text>
+          )}
+          {currentReading && (
+            <View style={[styles.rawTag, { backgroundColor: colors.muted }]}>
+              <Text style={[styles.rawTagText, { color: colors.mutedForeground }]}>
+                Last raw: {currentReading.rawString}
               </Text>
             </View>
-            <Feather
-              name="chevron-right"
-              size={16}
-              color={colors.mutedForeground}
-            />
-          </View>
-          <View style={styles.list}>
-            {activeAlerts.map((alert) => (
-              <AlertItem
-                key={alert.id}
-                alert={alert}
-                onResolve={() => resolveAlert(alert.id)}
-              />
-            ))}
-          </View>
+          )}
         </View>
-      )}
 
-      {/* Stations */}
-      <View style={styles.section}>
+        {/* ── 5 Sensor Cards ── */}
         <View style={styles.sectionHeader}>
-          <View style={styles.sectionTitleRow}>
-            <Feather name="radio" size={15} color={colors.primary} />
-            <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
-              Monitoring Stations
-            </Text>
-          </View>
-          <Text
-            style={[styles.seeAll, { color: colors.primary }]}
-            onPress={() => router.push("/(tabs)/stations")}
-          >
-            See all
+          <Feather name="activity" size={14} color={colors.primary} />
+          <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
+            Sensor Readings
           </Text>
         </View>
-        <View style={styles.list}>
-          {topStations.map((station) => (
-            <StationCard
-              key={station.id}
-              station={station}
-              onPress={() =>
-                router.push({ pathname: "/station/[id]", params: { id: station.id } })
-              }
+
+        {sensorCards.length === 0 ? (
+          <View style={[styles.emptyCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <ActivityIndicator color={colors.primary} />
+            <Text style={[styles.emptyText, { color: colors.mutedForeground }]}>
+              Loading sensor data...
+            </Text>
+          </View>
+        ) : (
+          <View style={styles.sensorList}>
+            {sensorCards.map((card) => (
+              <SensorCard key={card.id} card={card} />
+            ))}
+          </View>
+        )}
+
+        {/* ── About / Credits ── */}
+        <View
+          style={[
+            styles.creditsCard,
+            { backgroundColor: colors.primary + "0F", borderColor: colors.primary + "30" },
+          ]}
+        >
+          <View style={styles.creditsHeader}>
+            <View style={[styles.creditsIcon, { backgroundColor: colors.primary }]}>
+              <Feather name="award" size={16} color="#fff" />
+            </View>
+            <Text style={[styles.creditsTitle, { color: colors.foreground }]}>
+              About This Project
+            </Text>
+          </View>
+          <View style={[styles.divider, { backgroundColor: colors.primary + "25" }]} />
+          <Text style={[styles.creditsHeading, { color: colors.mutedForeground }]}>
+            Designed and Developed By:
+          </Text>
+          <View style={styles.creditsGrid}>
+            <CreditsRow icon="user" label="Name" value="Aneesh Kumar" colors={colors} />
+            <CreditsRow icon="book" label="Branch" value="Computer Science" colors={colors} />
+            <CreditsRow icon="calendar" label="Year" value="Final Year" colors={colors} />
+            <CreditsRow icon="hash" label="Roll No" value="2205270100004" colors={colors} />
+            <CreditsRow
+              icon="home"
+              label="College"
+              value="Sunrise Institute of Engineering Technology & Management"
+              colors={colors}
             />
-          ))}
+          </View>
         </View>
+      </ScrollView>
+    </KeyboardAvoidingView>
+  );
+}
+
+function CreditsRow({
+  icon,
+  label,
+  value,
+  colors,
+}: {
+  icon: string;
+  label: string;
+  value: string;
+  colors: ReturnType<typeof import("@/hooks/useColors").useColors>;
+}) {
+  return (
+    <View style={styles.creditsRow}>
+      <Feather name={icon as any} size={13} color={colors.primary} style={{ marginTop: 1 }} />
+      <View style={styles.creditsRowText}>
+        <Text style={[styles.creditsLabel, { color: colors.mutedForeground }]}>{label}</Text>
+        <Text style={[styles.creditsValue, { color: colors.foreground }]}>{value}</Text>
       </View>
-    </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  scroll: {
-    flex: 1,
-  },
-  content: {
-    paddingHorizontal: 16,
-    gap: 16,
-  },
+  scroll: { flex: 1 },
+  content: { paddingHorizontal: 16, gap: 14 },
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "flex-end",
     paddingTop: 12,
   },
-  greeting: {
+  appName: { fontSize: 12, fontFamily: "Inter_400Regular" },
+  title: { fontSize: 26, fontFamily: "Inter_700Bold" },
+  headerRight: { flexDirection: "row", alignItems: "center", gap: 8 },
+  refreshed: { fontSize: 11, fontFamily: "Inter_400Regular" },
+  statusBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    borderRadius: 14,
+    borderWidth: 1,
+    padding: 14,
+    gap: 12,
+  },
+  statusDot: { width: 12, height: 12, borderRadius: 6 },
+  statusText: { flex: 1, gap: 2 },
+  statusLabel: { fontSize: 15, fontFamily: "Inter_700Bold" },
+  statusSub: { fontSize: 12, fontFamily: "Inter_400Regular" },
+  readingTag: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 10,
+  },
+  readingTagText: { fontSize: 11, fontFamily: "Inter_600SemiBold" },
+  parserCard: {
+    borderRadius: 14,
+    borderWidth: 1,
+    padding: 14,
+    gap: 10,
+  },
+  parserHeader: { flexDirection: "row", alignItems: "center", gap: 7 },
+  parserTitle: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
+  parserHint: { fontSize: 11, fontFamily: "Inter_400Regular" },
+  parserRow: { flexDirection: "row", gap: 8 },
+  parserInput: {
+    flex: 1,
+    borderRadius: 10,
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
     fontSize: 13,
     fontFamily: "Inter_400Regular",
   },
-  title: {
-    fontSize: 26,
-    fontFamily: "Inter_700Bold",
-  },
-  headerRight: {
-    flexDirection: "row",
+  parseBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 10,
     alignItems: "center",
-    gap: 8,
+    justifyContent: "center",
   },
-  refreshed: {
-    fontSize: 11,
-    fontFamily: "Inter_400Regular",
+  parseMsg: { fontSize: 11, fontFamily: "Inter_500Medium" },
+  rawTag: {
+    borderRadius: 8,
+    padding: 8,
   },
-  section: {
+  rawTagText: { fontSize: 10, fontFamily: "Inter_400Regular", letterSpacing: 0.3 },
+  sectionHeader: { flexDirection: "row", alignItems: "center", gap: 7 },
+  sectionTitle: { fontSize: 16, fontFamily: "Inter_600SemiBold" },
+  sensorList: { gap: 10 },
+  emptyCard: {
+    borderRadius: 14,
+    borderWidth: 1,
+    padding: 30,
+    alignItems: "center",
     gap: 10,
   },
-  sectionHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
+  emptyText: { fontSize: 14, fontFamily: "Inter_400Regular" },
+  creditsCard: {
+    borderRadius: 16,
+    borderWidth: 1,
+    padding: 16,
+    gap: 12,
+  },
+  creditsHeader: { flexDirection: "row", alignItems: "center", gap: 10 },
+  creditsIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
     alignItems: "center",
+    justifyContent: "center",
   },
-  sectionTitleRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-  },
-  sectionTitle: {
-    fontSize: 16,
-    fontFamily: "Inter_600SemiBold",
-  },
-  seeAll: {
-    fontSize: 13,
-    fontFamily: "Inter_500Medium",
-  },
-  list: {
-    gap: 10,
-  },
+  creditsTitle: { fontSize: 15, fontFamily: "Inter_600SemiBold" },
+  divider: { height: 1 },
+  creditsHeading: { fontSize: 11, fontFamily: "Inter_500Medium", textTransform: "uppercase", letterSpacing: 0.8 },
+  creditsGrid: { gap: 10 },
+  creditsRow: { flexDirection: "row", alignItems: "flex-start", gap: 10 },
+  creditsRowText: { flex: 1, gap: 1 },
+  creditsLabel: { fontSize: 10, fontFamily: "Inter_400Regular", textTransform: "uppercase", letterSpacing: 0.5 },
+  creditsValue: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
 });

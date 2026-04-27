@@ -14,7 +14,7 @@ import { KeyboardProvider } from "react-native-keyboard-controller";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { ErrorBoundary } from "@/components/ErrorBoundary";
-import { WaterDataProvider } from "@/context/WaterDataContext";
+import { SensorDataProvider } from "@/context/SensorDataContext";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -24,10 +24,6 @@ function RootLayoutNav() {
   return (
     <Stack screenOptions={{ headerBackTitle: "Back" }}>
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-      <Stack.Screen
-        name="station/[id]"
-        options={{ headerShown: false }}
-      />
     </Stack>
   );
 }
@@ -52,13 +48,13 @@ export default function RootLayout() {
     <SafeAreaProvider>
       <ErrorBoundary>
         <QueryClientProvider client={queryClient}>
-          <WaterDataProvider>
+          <SensorDataProvider>
             <GestureHandlerRootView>
               <KeyboardProvider>
                 <RootLayoutNav />
               </KeyboardProvider>
             </GestureHandlerRootView>
-          </WaterDataProvider>
+          </SensorDataProvider>
         </QueryClientProvider>
       </ErrorBoundary>
     </SafeAreaProvider>

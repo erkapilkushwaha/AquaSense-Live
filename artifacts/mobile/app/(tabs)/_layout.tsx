@@ -7,7 +7,7 @@ import { Feather } from "@expo/vector-icons";
 import React from "react";
 import { Platform, StyleSheet, View, useColorScheme } from "react-native";
 import { useColors } from "@/hooks/useColors";
-import { useWaterData } from "@/context/WaterDataContext";
+import { useSensorData } from "@/context/SensorDataContext";
 
 function NativeTabLayout() {
   return (
@@ -17,8 +17,8 @@ function NativeTabLayout() {
         <Label>Dashboard</Label>
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="stations">
-        <Icon sf={{ default: "antenna.radiowaves.left.and.right", selected: "antenna.radiowaves.left.and.right" }} />
-        <Label>Stations</Label>
+        <Icon sf={{ default: "list.bullet.clipboard", selected: "list.bullet.clipboard.fill" }} />
+        <Label>Readings</Label>
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="alerts">
         <Icon sf={{ default: "bell", selected: "bell.fill" }} />
@@ -38,7 +38,7 @@ function ClassicTabLayout() {
   const isDark = colorScheme === "dark";
   const isIOS = Platform.OS === "ios";
   const isWeb = Platform.OS === "web";
-  const { unreadAlertCount } = useWaterData();
+  const { unreadAlertCount } = useSensorData();
 
   return (
     <Tabs
@@ -63,10 +63,7 @@ function ClassicTabLayout() {
             />
           ) : (
             <View
-              style={[
-                StyleSheet.absoluteFill,
-                { backgroundColor: colors.background },
-              ]}
+              style={[StyleSheet.absoluteFill, { backgroundColor: colors.background }]}
             />
           ),
       }}
@@ -86,12 +83,12 @@ function ClassicTabLayout() {
       <Tabs.Screen
         name="stations"
         options={{
-          title: "Stations",
+          title: "Readings",
           tabBarIcon: ({ color }) =>
             isIOS ? (
-              <SymbolView name="antenna.radiowaves.left.and.right" tintColor={color} size={22} />
+              <SymbolView name="list.bullet.clipboard" tintColor={color} size={22} />
             ) : (
-              <Feather name="radio" size={22} color={color} />
+              <Feather name="bar-chart-2" size={22} color={color} />
             ),
         }}
       />

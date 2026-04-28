@@ -1,12 +1,51 @@
 {
   "expo": {
+    "name": "AquaSense Live",
+    "slug": "workspace",
+    "version": "1.0.0",
+    "owner": "erkapilkushwaha",
     "extra": {
       "eas": {
-        "projectId": "87451dc3-15cf-4448-b7ad-ad2a717807f9"
+        "projectId": "f2894e18-6689-4e56-93a1-fd6a86f821d8"
       }
     },
+    "orientation": "portrait",
+    "icon": "./assets/images/icon.png",
+    "scheme": "aquasense",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": false,
+    "splash": {
+      "image": "./assets/images/icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0284c7"
+    },
+    "ios": {
+      "supportsTablet": false
+    },
     "android": {
-      "package": "com.erkapilkushwah.workspace"
+      "package": "com.erkapilkushwaha.workspace",
+      "minSdkVersion": 24,
+      "targetSdkVersion": 34,
+      "versionCode": 1,
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/images/icon.png",
+        "backgroundColor": "#0284c7"
+      },
+      "permissions": [
+        "android.permission.USB_PERMISSION",
+        "android.permission.FOREGROUND_SERVICE"
+      ]
+    },
+    "web": {
+      "favicon": "./assets/images/icon.png"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-font",
+      "expo-web-browser"
+    ],
+    "experiments": {
+      "typedRoutes": true
     }
   }
 }

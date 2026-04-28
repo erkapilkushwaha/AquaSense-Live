@@ -1,8 +1,14 @@
 {
   "expo": {
     "name": "AquaSense Live",
-    "slug": "aquasense-live",
+    "slug": "workspace",
     "version": "1.0.0",
+    "owner": "erkapilkushwaha",
+    "extra": {
+      "eas": {
+        "projectId": "f2894e18-6689-4e56-93a1-fd6a86f821d8"
+      }
+    },
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "aquasense",
@@ -17,33 +23,29 @@
       "supportsTablet": false
     },
     "android": {
-      "package": "com.kapil.aquasense",
-      "minSdkVersion": 21,
+      "package": "com.erkapilkushwaha.workspace",
+      "minSdkVersion": 24,
       "targetSdkVersion": 34,
       "versionCode": 1,
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/icon.png",
         "backgroundColor": "#0284c7"
       },
-      "permissions": []
+      "permissions": [
+        "android.permission.USB_PERMISSION",
+        "android.permission.FOREGROUND_SERVICE"
+      ]
     },
     "web": {
       "favicon": "./assets/images/icon.png"
     },
     "plugins": [
-      [
-        "expo-router",
-        {
-          "origin": "https://replit.com/"
-        }
-      ],
+      "expo-router",
       "expo-font",
-      "expo-web-browser",
-      "./app.plugin"
+      "expo-web-browser"
     ],
     "experiments": {
-      "typedRoutes": true,
-      "reactCompiler": true
+      "typedRoutes": true
     }
   }
 }

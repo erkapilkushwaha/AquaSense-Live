@@ -59,3 +59,8 @@ Arduino sends `TDS|pH|TURB|TEMP|FLOW\n` at 9600 baud → hex stream buffered to 
 
 ### Credits (permanently on Dashboard)
 Designed and Developed by **Aneesh Kumar** — Roll No 2205270100004, Computer Science Final Year, Sunrise Institute of Engineering Technology & Management.
+
+### Critical Dependency Notes
+- **Root `package.json` must NOT have any Expo/React Native dependencies.** The original scaffold left Expo 51 packages at the workspace root; these were hoisted by pnpm and caused Metro to resolve `expo-modules-core@1.12.26` (Expo 51) instead of `3.0.x` (Expo 54), breaking `expo-font@14.0.11`'s `registerWebModule` call. Root `package.json` now only contains workspace tooling dev deps.
+- **No metro version overrides in `pnpm-workspace.yaml`.** `@expo/metro@54.2.0` uses metro 0.83.x private APIs; pinning metro to 0.80.8 breaks the bundler. The expo-doctor "metro version" warning is harmless — do not add metro overrides.
+- **All expo packages use explicit exact/tilde versions** (no `catalog:` or `workspace:*`) in `artifacts/mobile/package.json` since EAS builds resolve packages differently from the local workspace.

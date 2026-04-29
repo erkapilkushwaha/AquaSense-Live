@@ -3,6 +3,44 @@
     "name": "AquaSense Live",
     "slug": "aquasense-live",
     "version": "1.0.0",
-    "platforms": ["android"]
+    "owner": "erkapilkushwah",
+    "orientation": "portrait",
+    "icon": "./assets/images/icon.png",
+    "scheme": "aquasense",
+    "userInterfaceStyle": "automatic",
+    "splash": {
+      "image": "./assets/images/icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0284c7"
+    },
+    "ios": {
+      "supportsTablet": false
+    },
+    "android": {
+      "package": "com.erkapilkushwaha.workspace",
+      "versionCode": 1,
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/images/icon.png",
+        "backgroundColor": "#0284c7"
+      },
+      "permissions": [
+        "android.permission.USB_PERMISSION",
+        "android.permission.FOREGROUND_SERVICE"
+      ]
+    },
+    "web": {
+      "favicon": "./assets/images/icon.png"
+    },
+    "plugins": [
+      "expo-router"
+    ],
+    "experiments": {
+      "typedRoutes": true
+    },
+    "extra": {
+      "eas": {
+        "projectId": "f2894e18-6689-4e56-93a1-fd6a06f821d0"
+      }
+    }
   }
 }

@@ -3,11 +3,12 @@
     "name": "AquaSense Live",
     "slug": "erkapilkushwaha",
     "version": "1.0.0",
-    "owner": "erkapilkushwah",
+    "owner": "erkapilkushwaha",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "aquasense",
     "userInterfaceStyle": "automatic",
+    "main": "expo-router/entry", 
     "splash": {
       "image": "./assets/images/icon.png",
       "resizeMode": "contain",
@@ -24,7 +25,7 @@
     "plugins": ["expo-router"],
     "extra": {
       "eas": {
-        "projectId": "f2894e18-6689-4e56-93a1-fd6a06f821d0"
+        "projectId": "adabe93a-fe37-456e-b296-725e8c0704bb"
       }
     }
   }

@@ -8,12 +8,6 @@
     "icon": "./assets/images/icon.png",
     "scheme": "aquasense",
     "userInterfaceStyle": "automatic",
-    "main": "expo-router/entry", 
-    "splash": {
-      "image": "./assets/images/icon.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#0284c7"
-    },
     "android": {
       "package": "com.erkapilkushwaha.workspace",
       "versionCode": 1,
@@ -22,8 +16,13 @@
         "backgroundColor": "#0284c7"
       }
     },
-    "plugins": ["expo-router"],
+    "plugins": [
+      "expo-router"
+    ],
     "extra": {
+      "router": {
+        "origin": false
+      },
       "eas": {
         "projectId": "adabe93a-fe37-456e-b296-725e8c0704bb"
       }
